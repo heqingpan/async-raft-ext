@@ -23,7 +23,11 @@ async fn client_reads() -> Result<()> {
     fixtures::init_tracing();
 
     // Setup test dependencies.
-    let config = Arc::new(Config::build("test".into()).validate().expect("failed to build Raft config"));
+    let config = Arc::new(
+        Config::build("test".into())
+            .validate()
+            .expect("failed to build Raft config"),
+    );
     let router = Arc::new(RaftRouter::new(config.clone()));
     router.new_raft_node(0).await;
     router.new_raft_node(1).await;
@@ -46,8 +50,14 @@ async fn client_reads() -> Result<()> {
         .client_read(leader)
         .await
         .unwrap_or_else(|_| panic!("expected client_read to succeed for cluster leader {}", leader));
-    router.client_read(1).await.expect_err("expected client_read on follower node 1 to fail");
-    router.client_read(2).await.expect_err("expected client_read on follower node 2 to fail");
+    router
+        .client_read(1)
+        .await
+        .expect_err("expected client_read on follower node 1 to fail");
+    router
+        .client_read(2)
+        .await
+        .expect_err("expected client_read on follower node 2 to fail");
 
     Ok(())
 }

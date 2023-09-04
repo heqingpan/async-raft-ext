@@ -131,10 +131,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
                 .await
                 .map_err(|err| self.map_fatal_storage_error(err))?;
             let opt = match old_entries.iter().find(|entry| entry.term == msg.prev_log_term) {
-                Some(entry) => Some(ConflictOpt {
-                    term: entry.term,
-                    index: entry.index,
-                }),
+                Some(entry) => Some(ConflictOpt { term: entry.term, index: entry.index }),
                 None => Some(ConflictOpt {
                     term: self.last_log_term,
                     index: self.last_log_index,

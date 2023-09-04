@@ -67,7 +67,10 @@ async fn compaction() -> Result<()> {
 
     // Add a new node and assert that it received the same snapshot.
     router.new_raft_node(1).await;
-    router.add_non_voter(0, 1).await.expect("failed to add new node as non-voter");
+    router
+        .add_non_voter(0, 1)
+        .await
+        .expect("failed to add new node as non-voter");
     router
         .change_membership(0, hashset![0, 1])
         .await

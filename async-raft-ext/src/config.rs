@@ -212,7 +212,9 @@ impl ConfigBuilder {
         // Roll a random election time out based on the configured min & max or their respective defaults.
         let election_timeout_min = self.election_timeout_min.unwrap_or(DEFAULT_ELECTION_TIMEOUT_MIN);
         let election_timeout_max = self.election_timeout_max.unwrap_or(DEFAULT_ELECTION_TIMEOUT_MAX);
-        let start_first_election_timeout = self.start_first_election_timeout.unwrap_or(DEFAULT_FISTER_ELECTION_TIMEOUT);
+        let start_first_election_timeout = self
+            .start_first_election_timeout
+            .unwrap_or(DEFAULT_FISTER_ELECTION_TIMEOUT);
         if election_timeout_min >= election_timeout_max {
             return Err(ConfigError::InvalidElectionTimeoutMinMax);
         }

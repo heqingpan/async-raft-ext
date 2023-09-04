@@ -63,10 +63,7 @@ impl InitialState {
             last_log_index: 0,
             last_log_term: 0,
             last_applied_log: 0,
-            hard_state: HardState {
-                current_term: 0,
-                voted_for: None,
-            },
+            hard_state: HardState { current_term: 0, voted_for: None },
             membership: MembershipConfig::new_initial(id),
         }
     }

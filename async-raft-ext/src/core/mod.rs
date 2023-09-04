@@ -161,7 +161,11 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
     #[tracing::instrument(level="trace", skip(self), fields(id=self.id, cluster=%self.config.cluster_name))]
     async fn main(mut self) -> RaftResult<()> {
         tracing::trace!("raft node is initializing");
-        let state = self.storage.get_initial_state().await.map_err(|err| self.map_fatal_storage_error(err))?;
+        let state = self
+            .storage
+            .get_initial_state()
+            .await
+            .map_err(|err| self.map_fatal_storage_error(err))?;
         self.last_log_index = state.last_log_index;
         self.last_log_term = state.last_log_term;
         self.current_term = state.hard_state.current_term;
@@ -196,8 +200,8 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
         // term before network communication is established.
         else if !is_only_configured_member && self.membership.contains(&self.id) {
             self.target_state = State::Follower;
-            let inst = Instant::now() 
-                + Duration::from_secs(self.config.start_first_election_timeout) 
+            let inst = Instant::now()
+                + Duration::from_secs(self.config.start_first_election_timeout)
                 + Duration::from_millis(self.config.new_rand_election_timeout());
             self.next_election_timeout = Some(inst);
         }
@@ -248,7 +252,11 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
             current_term: self.current_term,
             voted_for: self.voted_for,
         };
-        Ok(self.storage.save_hard_state(&hs).await.map_err(|err| self.map_fatal_storage_error(err))?)
+        Ok(self
+            .storage
+            .save_hard_state(&hs)
+            .await
+            .map_err(|err| self.map_fatal_storage_error(err))?)
     }
 
     /// Update core's target state, ensuring all invariants are upheld.
@@ -383,10 +391,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
         let (handle, reg) = AbortHandle::new_pair();
         let (chan_tx, _) = broadcast::channel(1);
         let tx_compaction = self.tx_compaction.clone();
-        self.snapshot_state = Some(SnapshotState::Snapshotting {
-            handle,
-            sender: chan_tx.clone(),
-        });
+        self.snapshot_state = Some(SnapshotState::Snapshotting { handle, sender: chan_tx.clone() });
         tokio::spawn(
             async move {
                 let res = Abortable::new(storage.do_log_compaction(), reg).await;

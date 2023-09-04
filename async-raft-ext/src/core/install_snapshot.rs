@@ -60,7 +60,11 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
     #[tracing::instrument(level = "trace", skip(self, req))]
     async fn begin_installing_snapshot(&mut self, req: InstallSnapshotRequest) -> RaftResult<InstallSnapshotResponse> {
         // Create a new snapshot and begin writing its contents.
-        let (id, mut snapshot) = self.storage.create_snapshot().await.map_err(|err| self.map_fatal_storage_error(err))?;
+        let (id, mut snapshot) = self
+            .storage
+            .create_snapshot()
+            .await
+            .map_err(|err| self.map_fatal_storage_error(err))?;
         snapshot.as_mut().write_all(&req.data).await?;
 
         // If this was a small snapshot, and it is already done, then finish up.
@@ -70,11 +74,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
         }
 
         // Else, retain snapshot components for later segments & respod.
-        self.snapshot_state = Some(SnapshotState::Streaming {
-            offset: req.data.len() as u64,
-            id,
-            snapshot,
-        });
+        self.snapshot_state = Some(SnapshotState::Streaming { offset: req.data.len() as u64, id, snapshot });
         Ok(InstallSnapshotResponse { term: self.current_term })
     }
 

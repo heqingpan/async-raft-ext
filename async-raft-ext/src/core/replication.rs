@@ -38,11 +38,9 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
         let res = match event {
             ReplicaEvent::RateUpdate { target, is_line_rate } => self.handle_rate_update(target, is_line_rate).await,
             ReplicaEvent::RevertToFollower { target, term } => self.handle_revert_to_follower(target, term).await,
-            ReplicaEvent::UpdateMatchIndex {
-                target,
-                match_index,
-                match_term,
-            } => self.handle_update_match_index(target, match_index, match_term).await,
+            ReplicaEvent::UpdateMatchIndex { target, match_index, match_term } => {
+                self.handle_update_match_index(target, match_index, match_term).await
+            }
             ReplicaEvent::NeedsSnapshot { target, tx } => self.handle_needs_snapshot(target, tx).await,
             ReplicaEvent::Shutdown => {
                 self.core.set_target_state(State::Shutdown);
@@ -167,14 +165,17 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
 
             // Update all replication streams based on new commit index.
             for node in self.nodes.values() {
-                let _ = node.replstream.repltx.send(RaftEvent::UpdateCommitIndex {
-                    commit_index: self.core.commit_index,
-                });
+                let _ = node
+                    .replstream
+                    .repltx
+                    .send(RaftEvent::UpdateCommitIndex { commit_index: self.core.commit_index });
             }
             for node in self.non_voters.values() {
-                let _ = node.state.replstream.repltx.send(RaftEvent::UpdateCommitIndex {
-                    commit_index: self.core.commit_index,
-                });
+                let _ = node
+                    .state
+                    .replstream
+                    .repltx
+                    .send(RaftEvent::UpdateCommitIndex { commit_index: self.core.commit_index });
             }
 
             // Check if there are any pending requests which need to be processed.

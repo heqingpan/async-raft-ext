@@ -140,20 +140,26 @@ impl RaftRouter {
 
     pub async fn add_non_voter(&self, leader: NodeId, target: NodeId) -> Result<(), ChangeConfigError> {
         let rt = self.routing_table.read().await;
-        let node = rt.get(&leader).unwrap_or_else(|| panic!("node with ID {} does not exist", leader));
+        let node = rt
+            .get(&leader)
+            .unwrap_or_else(|| panic!("node with ID {} does not exist", leader));
         node.0.add_non_voter(target).await
     }
 
     pub async fn change_membership(&self, leader: NodeId, members: HashSet<NodeId>) -> Result<(), ChangeConfigError> {
         let rt = self.routing_table.read().await;
-        let node = rt.get(&leader).unwrap_or_else(|| panic!("node with ID {} does not exist", leader));
+        let node = rt
+            .get(&leader)
+            .unwrap_or_else(|| panic!("node with ID {} does not exist", leader));
         node.0.change_membership(members).await
     }
 
     /// Send a client read request to the target node.
     pub async fn client_read(&self, target: NodeId) -> Result<(), ClientReadError> {
         let rt = self.routing_table.read().await;
-        let node = rt.get(&target).unwrap_or_else(|| panic!("node with ID {} does not exist", target));
+        let node = rt
+            .get(&target)
+            .unwrap_or_else(|| panic!("node with ID {} does not exist", target));
         node.0.client_read().await
     }
 
@@ -173,7 +179,9 @@ impl RaftRouter {
     /// Request the current leader from the target node.
     pub async fn current_leader(&self, target: NodeId) -> Option<NodeId> {
         let rt = self.routing_table.read().await;
-        let node = rt.get(&target).unwrap_or_else(|| panic!("node with ID {} does not exist", target));
+        let node = rt
+            .get(&target)
+            .unwrap_or_else(|| panic!("node with ID {} does not exist", target));
         node.0.current_leader().await
     }
 
@@ -311,7 +319,10 @@ impl RaftRouter {
         let rt = self.routing_table.read().await;
         for (id, (_node, storage)) in rt.iter() {
             let log = storage.get_log().await;
-            let last_log = log.keys().last().unwrap_or_else(|| panic!("no last log found for node {}", id));
+            let last_log = log
+                .keys()
+                .last()
+                .unwrap_or_else(|| panic!("no last log found for node {}", id));
             assert_eq!(
                 last_log, &expect_last_log,
                 "expected node {} to have last_log {}, got {}",

@@ -41,10 +41,7 @@ async fn test_get_membership_config_with_previous_state() -> Result<()> {
         },
     );
     let sm = MemStoreStateMachine::default();
-    let hs = HardState {
-        current_term: 1,
-        voted_for: Some(NODE_ID),
-    };
+    let hs = HardState { current_term: 1, voted_for: Some(NODE_ID) };
     let store = MemStore::new_with_state(NODE_ID, log, sm, Some(hs.clone()), None);
 
     let initial = store.get_membership_config().await?;
@@ -60,10 +57,7 @@ async fn test_get_membership_config_with_previous_state() -> Result<()> {
 #[tokio::test]
 async fn test_get_initial_state_default() -> Result<()> {
     let store = MemStore::new(NODE_ID);
-    let expected_hs = HardState {
-        current_term: 0,
-        voted_for: None,
-    };
+    let expected_hs = HardState { current_term: 0, voted_for: None };
     let expected_membership = MembershipConfig::new_initial(NODE_ID);
 
     let initial = store.get_initial_state().await?;
@@ -79,22 +73,12 @@ async fn test_get_initial_state_default() -> Result<()> {
 #[tokio::test]
 async fn test_get_initial_state_with_previous_state() -> Result<()> {
     let mut log = BTreeMap::new();
-    log.insert(
-        1,
-        Entry {
-            term: 1,
-            index: 1,
-            payload: EntryPayload::Blank,
-        },
-    );
+    log.insert(1, Entry { term: 1, index: 1, payload: EntryPayload::Blank });
     let sm = MemStoreStateMachine {
         last_applied_log: 1, // Just stubbed in for testing.
         ..Default::default()
     };
-    let hs = HardState {
-        current_term: 1,
-        voted_for: Some(NODE_ID),
-    };
+    let hs = HardState { current_term: 1, voted_for: Some(NODE_ID) };
     let store = MemStore::new_with_state(NODE_ID, log, sm, Some(hs.clone()), None);
 
     let initial = store.get_initial_state().await?;
@@ -112,10 +96,7 @@ async fn test_get_initial_state_with_previous_state() -> Result<()> {
 #[tokio::test]
 async fn test_save_hard_state() -> Result<()> {
     let store = MemStore::new(NODE_ID);
-    let new_hs = HardState {
-        current_term: 100,
-        voted_for: Some(NODE_ID),
-    };
+    let new_hs = HardState { current_term: 100, voted_for: Some(NODE_ID) };
 
     let initial = store.get_initial_state().await?;
     store.save_hard_state(&new_hs).await?;
@@ -211,11 +192,7 @@ async fn test_append_entry_to_log() -> Result<()> {
     let store = default_store_with_logs();
 
     store
-        .append_entry_to_log(&Entry {
-            term: 2,
-            index: 10,
-            payload: EntryPayload::Blank,
-        })
+        .append_entry_to_log(&Entry { term: 2, index: 10, payload: EntryPayload::Blank })
         .await?;
     let log = store.get_log().await;
 
@@ -233,11 +210,7 @@ async fn test_replicate_to_log() -> Result<()> {
     let store = default_store_with_logs();
 
     store
-        .replicate_to_log(&[Entry {
-            term: 1,
-            index: 11,
-            payload: EntryPayload::Blank,
-        }])
+        .replicate_to_log(&[Entry { term: 1, index: 11, payload: EntryPayload::Blank }])
         .await?;
     let log = store.get_log().await;
 
@@ -273,7 +246,10 @@ async fn test_apply_entry_to_state_machine() -> Result<()> {
         .expect("expected entry to exist in client_serial_responses");
     assert_eq!(client_serial.0, 0, "unexpected client serial response");
     assert_eq!(client_serial.1, None, "unexpected client serial response");
-    let client_status = sm.client_status.get("0").expect("expected entry to exist in client_status");
+    let client_status = sm
+        .client_status
+        .get("0")
+        .expect("expected entry to exist in client_status");
     assert_eq!(client_status, "lit", "expected client_status to be 'lit', got '{}'", client_status);
     Ok(())
 }
@@ -317,8 +293,14 @@ async fn test_replicate_to_state_machine() -> Result<()> {
         .expect("expected entry to exist in client_serial_responses for client 2");
     assert_eq!(client_serial2.0, 0, "unexpected client serial response");
     assert_eq!(client_serial2.1, None, "unexpected client serial response");
-    let client_status1 = sm.client_status.get("1").expect("expected entry to exist in client_status for client 1");
-    let client_status2 = sm.client_status.get("2").expect("expected entry to exist in client_status for client 2");
+    let client_status1 = sm
+        .client_status
+        .get("1")
+        .expect("expected entry to exist in client_status for client 1");
+    let client_status2 = sm
+        .client_status
+        .get("2")
+        .expect("expected entry to exist in client_status for client 2");
     assert_eq!(client_status1, "new", "expected client_status to be 'new', got '{}'", client_status1);
     assert_eq!(client_status2, "other", "expected client_status to be 'other', got '{}'", client_status2);
     Ok(())
@@ -329,90 +311,17 @@ async fn test_replicate_to_state_machine() -> Result<()> {
 
 fn default_store_with_logs() -> MemStore {
     let mut log = BTreeMap::new();
-    log.insert(
-        1,
-        Entry {
-            term: 1,
-            index: 1,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        2,
-        Entry {
-            term: 1,
-            index: 2,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        3,
-        Entry {
-            term: 1,
-            index: 3,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        4,
-        Entry {
-            term: 1,
-            index: 4,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        5,
-        Entry {
-            term: 1,
-            index: 5,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        6,
-        Entry {
-            term: 1,
-            index: 6,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        7,
-        Entry {
-            term: 1,
-            index: 7,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        8,
-        Entry {
-            term: 1,
-            index: 8,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        9,
-        Entry {
-            term: 1,
-            index: 9,
-            payload: EntryPayload::Blank,
-        },
-    );
-    log.insert(
-        10,
-        Entry {
-            term: 1,
-            index: 10,
-            payload: EntryPayload::Blank,
-        },
-    );
+    log.insert(1, Entry { term: 1, index: 1, payload: EntryPayload::Blank });
+    log.insert(2, Entry { term: 1, index: 2, payload: EntryPayload::Blank });
+    log.insert(3, Entry { term: 1, index: 3, payload: EntryPayload::Blank });
+    log.insert(4, Entry { term: 1, index: 4, payload: EntryPayload::Blank });
+    log.insert(5, Entry { term: 1, index: 5, payload: EntryPayload::Blank });
+    log.insert(6, Entry { term: 1, index: 6, payload: EntryPayload::Blank });
+    log.insert(7, Entry { term: 1, index: 7, payload: EntryPayload::Blank });
+    log.insert(8, Entry { term: 1, index: 8, payload: EntryPayload::Blank });
+    log.insert(9, Entry { term: 1, index: 9, payload: EntryPayload::Blank });
+    log.insert(10, Entry { term: 1, index: 10, payload: EntryPayload::Blank });
     let sm = MemStoreStateMachine::default();
-    let hs = HardState {
-        current_term: 1,
-        voted_for: Some(NODE_ID),
-    };
+    let hs = HardState { current_term: 1, voted_for: Some(NODE_ID) };
     MemStore::new_with_state(NODE_ID, log, sm, Some(hs), None)
 }

@@ -27,10 +27,7 @@ pub(super) struct ClientRequestEntry<D: AppData, R: AppDataResponse> {
 impl<D: AppData, R: AppDataResponse> ClientRequestEntry<D, R> {
     /// Create a new instance from the raw components of a client request.
     pub(crate) fn from_entry<T: Into<ClientOrInternalResponseTx<D, R>>>(entry: Entry<D>, tx: T) -> Self {
-        Self {
-            entry: Arc::new(entry),
-            tx: tx.into(),
-        }
+        Self { entry: Arc::new(entry), tx: tx.into() }
     }
 }
 
@@ -283,10 +280,7 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
             ClientOrInternalResponseTx::Client(tx) => match &req.entry.payload {
                 EntryPayload::Normal(inner) => match self.apply_entry_to_state_machine(&req.entry.index, &inner.data).await {
                     Ok(data) => {
-                        let _ = tx.send(Ok(ClientWriteResponse {
-                            index: req.entry.index,
-                            data,
-                        }));
+                        let _ = tx.send(Ok(ClientWriteResponse { index: req.entry.index, data }));
                     }
                     Err(err) => {
                         let _ = tx.send(Err(ClientWriteError::RaftError(err)));
@@ -356,15 +350,20 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
             }
         }
         // Apply this entry to the state machine and return its data response.
-        let res = self.core.storage.apply_entry_to_state_machine(index, entry).await.map_err(|err| {
-            if err.downcast_ref::<S::ShutdownError>().is_some() {
-                // If this is an instance of the storage impl's shutdown error, then trigger shutdown.
-                self.core.map_fatal_storage_error(err)
-            } else {
-                // Else, we propagate normally.
-                RaftError::RaftStorage(err)
-            }
-        });
+        let res = self
+            .core
+            .storage
+            .apply_entry_to_state_machine(index, entry)
+            .await
+            .map_err(|err| {
+                if err.downcast_ref::<S::ShutdownError>().is_some() {
+                    // If this is an instance of the storage impl's shutdown error, then trigger shutdown.
+                    self.core.map_fatal_storage_error(err)
+                } else {
+                    // Else, we propagate normally.
+                    RaftError::RaftStorage(err)
+                }
+            });
         self.core.last_applied = *index;
         self.core.report_metrics();
         Ok(res?)

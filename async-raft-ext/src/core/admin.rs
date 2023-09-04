@@ -26,10 +26,7 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
 
         // Build a new membership config from given init data & assign it as the new cluster
         // membership config in memory only.
-        self.core.membership = MembershipConfig {
-            members,
-            members_after_consensus: None,
-        };
+        self.core.membership = MembershipConfig { members, members_after_consensus: None };
 
         // Become a candidate and start campaigning for leadership. If this node is the only node
         // in the cluster, then become leader without holding an election. If members len == 1, we
@@ -72,14 +69,8 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
         // Spawn a replication stream for the new member. Track state as a non-voter so that it
         // can be updated to be added to the cluster config once it has been brought up-to-date.
         let state = self.spawn_replication_stream(target);
-        self.non_voters.insert(
-            target,
-            NonVoterReplicationState {
-                state,
-                is_ready_to_join: false,
-                tx: Some(tx),
-            },
-        );
+        self.non_voters
+            .insert(target, NonVoterReplicationState { state, is_ready_to_join: false, tx: Some(tx) });
     }
 
     #[tracing::instrument(level = "trace", skip(self, tx))]
@@ -117,14 +108,8 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
                     // Spawn a replication stream for the new member. Track state as a non-voter so that it
                     // can be updated to be added to the cluster config once it has been brought up-to-date.
                     let state = self.spawn_replication_stream(*new_node);
-                    self.non_voters.insert(
-                        *new_node,
-                        NonVoterReplicationState {
-                            state,
-                            is_ready_to_join: false,
-                            tx: None,
-                        },
-                    );
+                    self.non_voters
+                        .insert(*new_node, NonVoterReplicationState { state, is_ready_to_join: false, tx: None });
                 }
             }
             awaiting.insert(*new_node);

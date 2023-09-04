@@ -23,7 +23,11 @@ async fn initialization() -> Result<()> {
     fixtures::init_tracing();
 
     // Setup test dependencies.
-    let config = Arc::new(Config::build("test".into()).validate().expect("failed to build Raft config"));
+    let config = Arc::new(
+        Config::build("test".into())
+            .validate()
+            .expect("failed to build Raft config"),
+    );
     let router = Arc::new(RaftRouter::new(config.clone()));
     router.new_raft_node(0).await;
     router.new_raft_node(1).await;
@@ -40,11 +44,20 @@ async fn initialization() -> Result<()> {
     router.assert_stable_cluster(Some(1), Some(1)).await;
 
     tracing::info!("--- performing node shutdowns");
-    let (node0, _) = router.remove_node(0).await.ok_or_else(|| anyhow!("failed to find node 0 in router"))?;
+    let (node0, _) = router
+        .remove_node(0)
+        .await
+        .ok_or_else(|| anyhow!("failed to find node 0 in router"))?;
     node0.shutdown().await?;
-    let (node1, _) = router.remove_node(1).await.ok_or_else(|| anyhow!("failed to find node 1 in router"))?;
+    let (node1, _) = router
+        .remove_node(1)
+        .await
+        .ok_or_else(|| anyhow!("failed to find node 1 in router"))?;
     node1.shutdown().await?;
-    let (node2, _) = router.remove_node(2).await.ok_or_else(|| anyhow!("failed to find node 2 in router"))?;
+    let (node2, _) = router
+        .remove_node(2)
+        .await
+        .ok_or_else(|| anyhow!("failed to find node 2 in router"))?;
     node2.shutdown().await?;
 
     Ok(())

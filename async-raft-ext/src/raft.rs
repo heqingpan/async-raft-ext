@@ -505,10 +505,7 @@ impl MembershipConfig {
     pub fn new_initial(id: NodeId) -> Self {
         let mut members = HashSet::new();
         members.insert(id);
-        Self {
-            members,
-            members_after_consensus: None,
-        }
+        Self { members, members_after_consensus: None }
     }
 }
 
@@ -531,12 +528,7 @@ pub struct VoteRequest {
 impl VoteRequest {
     /// Create a new instance.
     pub fn new(term: u64, candidate_id: u64, last_log_index: u64, last_log_term: u64) -> Self {
-        Self {
-            term,
-            candidate_id,
-            last_log_index,
-            last_log_term,
-        }
+        Self { term, candidate_id, last_log_index, last_log_term }
     }
 }
 
