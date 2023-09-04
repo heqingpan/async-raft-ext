@@ -9,6 +9,8 @@ use crate::error::ConfigError;
 pub const DEFAULT_ELECTION_TIMEOUT_MIN: u64 = 150;
 /// Default election timeout maximum, in milliseconds.
 pub const DEFAULT_ELECTION_TIMEOUT_MAX: u64 = 300;
+/// Default first election timeout , in milliseconds.
+pub const DEFAULT_FISTER_ELECTION_TIMEOUT: u64 = 5000;
 /// Default heartbeat interval.
 pub const DEFAULT_HEARTBEAT_INTERVAL: u64 = 50;
 /// Default threshold for when to trigger a snapshot.
@@ -73,6 +75,8 @@ pub struct Config {
     pub election_timeout_min: u64,
     /// The maximum election timeout in milliseconds.
     pub election_timeout_max: u64,
+    /// Default first election timeout
+    pub start_first_election_timeout: u64,
     /// The heartbeat interval in milliseconds at which leaders will send heartbeats to followers.
     ///
     /// Defaults to 50 milliseconds.
@@ -115,6 +119,7 @@ impl Config {
             cluster_name,
             election_timeout_min: None,
             election_timeout_max: None,
+            start_first_election_timeout: None,
             heartbeat_interval: None,
             max_payload_entries: None,
             replication_lag_threshold: None,
@@ -141,6 +146,7 @@ pub struct ConfigBuilder {
     pub election_timeout_min: Option<u64>,
     /// The maximum election timeout, in milliseconds.
     pub election_timeout_max: Option<u64>,
+    pub start_first_election_timeout: Option<u64>,
     /// The interval at which leaders will send heartbeats to followers to avoid election timeout.
     pub heartbeat_interval: Option<u64>,
     /// The maximum number of entries per payload allowed to be transmitted during replication.
@@ -163,6 +169,11 @@ impl ConfigBuilder {
     /// Set the desired value for `election_timeout_max`.
     pub fn election_timeout_max(mut self, val: u64) -> Self {
         self.election_timeout_max = Some(val);
+        self
+    }
+
+    pub fn start_first_election_timeout(mut self, val: u64) -> Self {
+        self.start_first_election_timeout = Some(val);
         self
     }
 
@@ -201,6 +212,7 @@ impl ConfigBuilder {
         // Roll a random election time out based on the configured min & max or their respective defaults.
         let election_timeout_min = self.election_timeout_min.unwrap_or(DEFAULT_ELECTION_TIMEOUT_MIN);
         let election_timeout_max = self.election_timeout_max.unwrap_or(DEFAULT_ELECTION_TIMEOUT_MAX);
+        let start_first_election_timeout = self.start_first_election_timeout.unwrap_or(DEFAULT_FISTER_ELECTION_TIMEOUT);
         if election_timeout_min >= election_timeout_max {
             return Err(ConfigError::InvalidElectionTimeoutMinMax);
         }
@@ -217,6 +229,7 @@ impl ConfigBuilder {
             cluster_name: self.cluster_name,
             election_timeout_min,
             election_timeout_max,
+            start_first_election_timeout,
             heartbeat_interval,
             max_payload_entries,
             replication_lag_threshold,
