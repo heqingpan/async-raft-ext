@@ -606,42 +606,48 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
         let _ = self.core.rafttx.send(event);
         self.core.replication_buffer.clear();
         self.core.outbound_buffer.clear();
-        let mut continuous_error_sum = 0u64;
         loop {
-            if self.core.target_state != TargetReplState::Lagging {
-                return;
+            loop {
+                if self.core.target_state != TargetReplState::Lagging {
+                    return;
+                }
+                // If this stream is far enough behind, then transition to snapshotting state.
+                if self.core.needs_snapshot() {
+                    self.core.target_state = TargetReplState::Snapshotting;
+                    return;
+                }
+
+                // Prep entries from storage and send them off for replication.
+                if self.is_up_to_speed() {
+                    self.core.target_state = TargetReplState::LineRate;
+                    return;
+                }
+                self.prep_outbound_buffer_from_storage().await;
+                if let Err(err) = self.core.send_append_entries().await {
+                    match err {
+                        ReplicationError::RaftNetwork(_) => break,
+                        ReplicationError::Timeout => break,
+                        _ => return 
+                    }
+                }
+                if self.is_up_to_speed() {
+                    self.core.target_state = TargetReplState::LineRate;
+                    return;
+                }
+
+                // Check raft channel to ensure we are staying up-to-date, then loop.
+                if let Some(Some(event)) = self.core.raftrx.recv().now_or_never() {
+                    self.core.drain_raftrx(event);
+                }
             }
-            // If this stream is far enough behind, then transition to snapshotting state.
-            if self.core.needs_snapshot() {
-                self.core.target_state = TargetReplState::Snapshotting;
-                return;
+            tokio::select! {
+                _ = self.core.heartbeat.tick() => {self.core.send_append_entries().await.ok();},
+                event = self.core.raftrx.recv() => match event {
+                    Some(event) => self.core.drain_raftrx(event),
+                    None => self.core.target_state = TargetReplState::Shutdown,
+                }
             }
 
-            // Prep entries from storage and send them off for replication.
-            if self.is_up_to_speed() {
-                self.core.target_state = TargetReplState::LineRate;
-                return;
-            }
-            self.prep_outbound_buffer_from_storage().await;
-            if continuous_error_sum > 1 {
-                self.core.heartbeat.tick().await;
-            }
-            let append_result = self.core.send_append_entries().await;
-            if append_result.is_err() {
-                continuous_error_sum += 1;
-            }
-            else{
-                continuous_error_sum =0;
-            }
-            if self.is_up_to_speed() {
-                self.core.target_state = TargetReplState::LineRate;
-                return;
-            }
-
-            // Check raft channel to ensure we are staying up-to-date, then loop.
-            if let Some(Some(event)) = self.core.raftrx.recv().now_or_never() {
-                self.core.drain_raftrx(event);
-            }
         }
     }
 
