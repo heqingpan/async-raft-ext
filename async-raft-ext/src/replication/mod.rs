@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{interval, timeout, Duration, Interval};
 
 use crate::config::{Config, SnapshotPolicy};
-use crate::error::RaftResult;
+use crate::error::{RaftResult, ReplicationError};
 use crate::raft::{AppendEntriesRequest, Entry, EntryPayload, InstallSnapshotRequest};
 use crate::storage::CurrentSnapshotData;
 use crate::{AppData, AppDataResponse, NodeId, RaftNetwork, RaftStorage};
@@ -184,7 +184,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
     /// This request will timeout if no response is received within the
     /// configured heartbeat interval.
     #[tracing::instrument(level = "trace", skip(self))]
-    async fn send_append_entries(&mut self) {
+    async fn send_append_entries(&mut self) -> Result<(),ReplicationError> {
         // Attempt to fill the send buffer from the replication buffer.
         if self.outbound_buffer.is_empty() {
             let repl_len = self.replication_buffer.len();
@@ -215,12 +215,12 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
                 Ok(res) => res,
                 Err(err) => {
                     tracing::error!({error=%err}, "error sending AppendEntries RPC to target");
-                    return;
+                    return Err(ReplicationError::RaftNetwork(err));
                 }
             },
             Err(err) => {
                 tracing::error!({error=%err}, "timeout while sending AppendEntries RPC to target");
-                return;
+                return Err(ReplicationError::Timeout);
             }
         };
         let last_index_and_term = self.outbound_buffer.last().map(|last| (last.as_ref().index, last.as_ref().term));
@@ -252,7 +252,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
                     self.target_state = TargetReplState::Lagging;
                 }
             }
-            return;
+            return Ok(());
         }
 
         // Replication was not successful, if a newer term has been returned, revert to follower.
@@ -263,7 +263,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
                 term: res.term,
             });
             self.target_state = TargetReplState::Shutdown;
-            return;
+            return Err(ReplicationError::Shutdown);
         }
 
         // Replication was not successful, handle conflict optimization record, else decrement `next_index`.
@@ -272,7 +272,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
             // If the returned conflict opt index is greater than last_log_index, then this is a
             // logical error, and no action should be taken. This represents a replication failure.
             if conflict.index > self.last_log_index {
-                return;
+                return Ok(());
             }
             self.next_index = conflict.index + 1;
             self.match_index = conflict.index;
@@ -287,7 +287,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
                     match_index: self.match_index,
                     match_term: self.match_term,
                 });
-                return;
+                return Ok(());
             }
 
             // Fetch the entry at conflict index and use the term specified there.
@@ -309,13 +309,13 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
                         match_index: self.match_index,
                         match_term: self.match_term,
                     });
-                    return;
+                    return Ok(());
                 }
                 Err(err) => {
                     tracing::error!({error=%err}, "error fetching log entry due to returned AppendEntries RPC conflict_opt");
                     let _ = self.rafttx.send(ReplicaEvent::Shutdown);
                     self.target_state = TargetReplState::Shutdown;
-                    return;
+                    return Err(ReplicationError::RaftStorage(err));
                 }
             };
 
@@ -331,14 +331,15 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
                     if &diff >= threshold {
                         // Follower is far behind and needs to receive an InstallSnapshot RPC.
                         self.target_state = TargetReplState::Snapshotting;
-                        return;
+                        return Ok(());
                     }
                     // Follower is behind, but not too far behind to receive an InstallSnapshot RPC.
                     self.target_state = TargetReplState::Lagging;
-                    return;
+                    return Ok(());
                 }
             }
         }
+        Ok(())
     }
 
     /// Perform a check to see if this replication stream is lagging behind far enough that a
@@ -544,11 +545,11 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
                     }
                 }
 
-                self.core.send_append_entries().await;
+                self.core.send_append_entries().await.ok();
                 continue;
             }
             tokio::select! {
-                _ = self.core.heartbeat.tick() => self.core.send_append_entries().await,
+                _ = self.core.heartbeat.tick() => {self.core.send_append_entries().await.ok();},
                 event = self.core.raftrx.recv() => match event {
                     Some(event) => self.core.drain_raftrx(event),
                     None => self.core.target_state = TargetReplState::Shutdown,
@@ -605,6 +606,7 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
         let _ = self.core.rafttx.send(event);
         self.core.replication_buffer.clear();
         self.core.outbound_buffer.clear();
+        let mut continuous_error_sum = 0u64;
         loop {
             if self.core.target_state != TargetReplState::Lagging {
                 return;
@@ -621,7 +623,16 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
                 return;
             }
             self.prep_outbound_buffer_from_storage().await;
-            self.core.send_append_entries().await;
+            if continuous_error_sum > 1 {
+                self.core.heartbeat.tick().await;
+            }
+            let append_result = self.core.send_append_entries().await;
+            if append_result.is_err() {
+                continuous_error_sum += 1;
+            }
+            else{
+                continuous_error_sum =0;
+            }
             if self.is_up_to_speed() {
                 self.core.target_state = TargetReplState::LineRate;
                 return;
@@ -750,7 +761,7 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
     async fn wait_for_snapshot(&mut self, mut rx: oneshot::Receiver<CurrentSnapshotData<S::Snapshot>>) {
         loop {
             tokio::select! {
-                _ = self.core.heartbeat.tick() => self.core.send_append_entries().await,
+                _ = self.core.heartbeat.tick() => {self.core.send_append_entries().await.ok();},
                 event = self.core.raftrx.recv() => match event {
                     Some(event) => self.core.drain_raftrx(event),
                     None => {

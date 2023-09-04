@@ -122,3 +122,18 @@ impl<D: AppData> From<ClientWriteError<D>> for ChangeConfigError {
         }
     }
 }
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub(crate) enum ReplicationError {
+    /// An error which has come from the `RaftStorage` layer.
+    #[error("{0}")]
+    RaftStorage(anyhow::Error),
+    /// An error which has come from the `RaftNetwork` layer.
+    #[error("{0}")]
+    RaftNetwork(anyhow::Error),
+    #[error("replication timeout")]
+    Timeout,
+    #[error("replication error,shutdown")]
+    Shutdown,
+}
