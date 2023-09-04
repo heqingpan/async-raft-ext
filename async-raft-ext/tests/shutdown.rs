@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use async_raft::Config;
+use async_raft_ext::Config;
 use tokio::time::sleep;
 
 use fixtures::RaftRouter;

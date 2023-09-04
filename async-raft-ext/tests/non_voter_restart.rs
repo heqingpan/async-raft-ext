@@ -5,7 +5,7 @@ use anyhow::Result;
 use maplit::hashset;
 use tokio::time::sleep;
 
-use async_raft::{Config, NodeId, Raft, State};
+use async_raft_ext::{Config, NodeId, Raft, State};
 use fixtures::RaftRouter;
 
 use crate::fixtures::MemRaft;

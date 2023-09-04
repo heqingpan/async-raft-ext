@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
-use async_raft::{Config, State};
+use async_raft_ext::{Config, State};
 use maplit::hashset;
 use tokio::time::sleep;
 

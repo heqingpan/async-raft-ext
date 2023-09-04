@@ -8,10 +8,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::io::Cursor;
 
 use anyhow::Result;
-use async_raft::async_trait::async_trait;
-use async_raft::raft::{Entry, EntryPayload, MembershipConfig};
-use async_raft::storage::{CurrentSnapshotData, HardState, InitialState};
-use async_raft::{AppData, AppDataResponse, NodeId, RaftStorage};
+use async_raft_ext::async_trait::async_trait;
+use async_raft_ext::raft::{Entry, EntryPayload, MembershipConfig};
+use async_raft_ext::storage::{CurrentSnapshotData, HardState, InitialState};
+use async_raft_ext::{AppData, AppDataResponse, NodeId, RaftStorage};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -73,7 +73,7 @@ pub struct MemStoreStateMachine {
     pub client_status: HashMap<String, String>,
 }
 
-/// An in-memory storage system implementing the `async_raft::RaftStorage` trait.
+/// An in-memory storage system implementing the `async_raft_ext::RaftStorage` trait.
 pub struct MemStore {
     /// The ID of the Raft node for which this memory storage instances is configured.
     id: NodeId,

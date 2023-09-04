@@ -1,7 +1,7 @@
 <h1 align="center">memstore</h1>
 <div align="center">
     <strong>
-        An in-memory storage system implementing the <code>async_raft::RaftStorage</code> trait. Please ⭐ on <a href="https://github.com/async-raft/async-raft">github</a>!
+        An in-memory storage system implementing the <code>async_raft_ext::RaftStorage</code> trait. Please ⭐ on <a href="https://github.com/async-raft/async-raft">github</a>!
     </strong>
 </div>
 <br />
