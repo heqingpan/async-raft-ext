@@ -214,7 +214,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
             Ok(outer_res) => match outer_res {
                 Ok(res) => res,
                 Err(err) => {
-                    tracing::error!({error=%err}, "error sending AppendEntries RPC to target");
+                    tracing::error!({error=%err}, "error sending AppendEntries RPC to target|{:?}|",&self.target_state);
                     return Err(ReplicationError::RaftNetwork(err));
                 }
             },
@@ -425,7 +425,7 @@ impl<D: AppData> AsRef<Entry<D>> for OutboundEntry<D> {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The state of the replication stream.
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum TargetReplState {
     /// The replication stream is running at line rate.
     LineRate,
@@ -625,7 +625,11 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
                 self.prep_outbound_buffer_from_storage().await;
                 if let Err(err) = self.core.send_append_entries().await {
                     match err {
-                        ReplicationError::RaftNetwork(_) => break,
+                        ReplicationError::RaftNetwork(_) => {
+                            self.core.heartbeat.tick().await;
+                            //tokio::time::sleep(Duration::from_millis(100)).await;
+                            break
+                        },
                         ReplicationError::Timeout => break,
                         _ => return 
                     }
