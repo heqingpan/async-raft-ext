@@ -1,6 +1,6 @@
 [package]
 name = "async-raft-ext"
-version = "0.6.2-beta.1"
+version = "0.6.2-beta.2"
 edition = "2018"
 authors = ["Anthony Dodd <Dodd.AnthonyJosiah@gmail.com>"]
 categories = ["algorithms", "asynchronous", "data-structures"]
