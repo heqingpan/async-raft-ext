@@ -18,6 +18,15 @@
 </div>
 <br/>
 
+------
+
+The ability of raft is enhanced while keeping the access interface unchanged for [rnacos](https://github.com/heqingpan/rnacos)
+
+
+------
+
+
+
 Blazing fast Rust, a modern consensus protocol, and a reliable async runtime — this project intends to provide a consensus backbone for the next generation of distributed data storage systems (SQL, NoSQL, KV, Streaming, Graph ... or maybe something more exotic).
 
 [The guide](https://async-raft.github.io/async-raft) is the best place to get started, followed by [the docs](https://docs.rs/async-raft/latest/async_raft/) for more in-depth details.

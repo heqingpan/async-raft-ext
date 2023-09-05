@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Replication stream.
 
 use std::io::SeekFrom;
@@ -166,7 +167,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Re
     #[tracing::instrument(level="trace", skip(self), fields(id=self.id, target=self.target, cluster=%self.config.cluster_name))]
     async fn main(mut self) {
         // Perform an initial heartbeat.
-        self.send_append_entries().await;
+        self.send_append_entries().await.ok();
 
         // Proceed to the replication stream's inner loop.
         loop {
