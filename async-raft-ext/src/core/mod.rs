@@ -201,7 +201,7 @@ impl<D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>> Ra
         else if !is_only_configured_member && self.membership.contains(&self.id) {
             self.target_state = State::Follower;
             let inst = Instant::now()
-                + Duration::from_secs(self.config.start_first_election_timeout)
+                + Duration::from_millis(self.config.start_first_election_timeout)
                 + Duration::from_millis(self.config.new_rand_election_timeout());
             self.next_election_timeout = Some(inst);
         }
