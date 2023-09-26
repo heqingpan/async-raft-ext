@@ -595,6 +595,7 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
     /// Transition to the Raft leader state.
     #[tracing::instrument(level="trace", skip(self), fields(id=self.core.id, raft_state="leader"))]
     pub(self) async fn run(mut self) -> RaftResult<()> {
+        log::trace!("LeaderState run start");
         // Spawn replication streams.
         let targets = self
             .core
@@ -774,9 +775,11 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
     /// Run the candidate loop.
     #[tracing::instrument(level="trace", skip(self), fields(id=self.core.id, raft_state="candidate"))]
     pub(self) async fn run(mut self) -> RaftResult<()> {
+        log::trace!("CandidateState run start");
         // Each iteration of the outer loop represents a new term.
         loop {
             if !self.core.target_state.is_candidate() {
+                log::trace!("CandidateState target_state is not candidate");
                 return Ok(());
             }
 
@@ -862,9 +865,12 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
     /// Run the follower loop.
     #[tracing::instrument(level="trace", skip(self), fields(id=self.core.id, raft_state="follower"))]
     pub(self) async fn run(self) -> RaftResult<()> {
+        log::trace!("FollowerState run start");
         self.core.report_metrics();
+        log::trace!("FollowerState run after report_metrics");
         loop {
             if !self.core.target_state.is_follower() {
+                log::trace!("FollowerState report_metrics is not follower");
                 return Ok(());
             }
 
@@ -938,9 +944,11 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
     /// Run the non-voter loop.
     #[tracing::instrument(level="trace", skip(self), fields(id=self.core.id, raft_state="non-voter"))]
     pub(self) async fn run(mut self) -> RaftResult<()> {
+        log::trace!("NonVoterState run start");
         self.core.report_metrics();
         loop {
             if !self.core.target_state.is_non_voter() {
+                log::trace!("NonVoterState target_state is not NonVoter");
                 return Ok(());
             }
             tokio::select! {
