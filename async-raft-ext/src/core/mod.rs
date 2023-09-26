@@ -871,39 +871,52 @@ impl<'a, D: AppData, R: AppDataResponse, N: RaftNetwork<D>, S: RaftStorage<D, R>
             let election_timeout = sleep_until(self.core.get_next_election_timeout()); // Value is updated as heartbeats are received.
             tokio::select! {
                 // If an election timeout is hit, then we need to transition to candidate.
-                _ = election_timeout => self.core.set_target_state(State::Candidate),
-                Some(msg) = self.core.rx_api.recv() => match msg {
-                    RaftMsg::AppendEntries{rpc, tx} => {
-                        let _ = tx.send(self.core.handle_append_entries_request(rpc).await);
-                    }
-                    RaftMsg::RequestVote{rpc, tx} => {
-                        let _ = tx.send(self.core.handle_vote_request(rpc).await);
-                    }
-                    RaftMsg::InstallSnapshot{rpc, tx} => {
-                        let _ = tx.send(self.core.handle_install_snapshot_request(rpc).await);
-                    }
-                    RaftMsg::ClientReadRequest{tx} => {
-                        self.core.forward_client_read_request(tx);
-                    }
-                    RaftMsg::ClientWriteRequest{rpc, tx} => {
-                        self.core.forward_client_write_request(rpc, tx);
-                    }
-                    RaftMsg::Initialize{tx, ..} => {
-                        self.core.reject_init_with_config(tx);
-                    }
-                    RaftMsg::AddNonVoter{tx, ..} => {
-                        self.core.reject_config_change_not_leader(tx);
-                    }
-                    RaftMsg::ChangeMembership{tx, ..} => {
-                        self.core.reject_config_change_not_leader(tx);
+                _ = election_timeout => {
+                    log::trace!("FollowerState select election_timeout");
+                    self.core.set_target_state(State::Candidate)
+                },
+                Some(msg) = self.core.rx_api.recv() => {
+                    log::trace!("FollowerState select rx_api msg");
+                    match msg {
+                        RaftMsg::AppendEntries{rpc, tx} => {
+                            let _ = tx.send(self.core.handle_append_entries_request(rpc).await);
+                        }
+                        RaftMsg::RequestVote{rpc, tx} => {
+                            let _ = tx.send(self.core.handle_vote_request(rpc).await);
+                        }
+                        RaftMsg::InstallSnapshot{rpc, tx} => {
+                            let _ = tx.send(self.core.handle_install_snapshot_request(rpc).await);
+                        }
+                        RaftMsg::ClientReadRequest{tx} => {
+                            self.core.forward_client_read_request(tx);
+                        }
+                        RaftMsg::ClientWriteRequest{rpc, tx} => {
+                            self.core.forward_client_write_request(rpc, tx);
+                        }
+                        RaftMsg::Initialize{tx, ..} => {
+                            self.core.reject_init_with_config(tx);
+                        }
+                        RaftMsg::AddNonVoter{tx, ..} => {
+                            self.core.reject_config_change_not_leader(tx);
+                        }
+                        RaftMsg::ChangeMembership{tx, ..} => {
+                            self.core.reject_config_change_not_leader(tx);
+                        }
                     }
                 },
-                Some(update) = self.core.rx_compaction.recv() => self.core.update_snapshot_state(update),
+                Some(update) = self.core.rx_compaction.recv() => {
+                    log::trace!("FollowerState select rx_compaction update");
+                    self.core.update_snapshot_state(update)
+                },
                 Some(Ok(repl_sm_result)) = self.core.replicate_to_sm_handle.next() => {
+                    log::trace!("FollowerState select replicate_to_sm_handle");
                     // Errors herein will trigger shutdown, so no need to process error.
                     let _ = self.core.handle_replicate_to_sm_result(repl_sm_result);
                 }
-                Ok(_) = &mut self.core.rx_shutdown => self.core.set_target_state(State::Shutdown),
+                Ok(_) = &mut self.core.rx_shutdown => {
+                    log::trace!("FollowerState select rx_shutdown");
+                    self.core.set_target_state(State::Shutdown)
+                },
             }
         }
     }
